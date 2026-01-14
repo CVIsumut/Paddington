@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Penghuni</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    margin-bottom: 10px;
+}
+
+.topbar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+input {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+.container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.card img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    background: #eee;
+}
+
+.card h3 {
+    margin: 6px 0;
+}
+
+.card p {
+    margin: 4px 0;
+    font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📋 Data Penghuni</h1>
+
+<div class="topbar">
+    <input type="text" id="searchNama" placeholder="Cari Nama">
+    <input type="text" id="searchKamar" placeholder="Cari No Kamar">
+</div>
+
+<div class="container" id="cards"></div>
+
+<script>
+/* ================= KONFIG ================= */
+const SHEET_ID = "1TikUIIPJv9EmadgHKzanfyeRSwI-TtKiRcPvX2vvyTE";
+const SHEET_NAME = "Sheet1"; // ganti jika beda
+
+const URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}&tqx=out:json`;
+
+let allData = [];
+
+/* ================= LOAD DATA ================= */
+fetch(URL)
+  .then(res => res.text())
+  .then(text => {
+      const json = JSON.parse(text.substring(47).slice(0, -2));
+      allData = json.table.rows || [];
+      render();
+  })
+  .catch(err => {
+      console.error(err);
+      document.getElementById("cards").innerHTML = "Gagal memuat data";
+  });
+
+/* ================= RENDER ================= */
+function render() {
+    const namaFilter = document.getElementById("searchNama").value.toLowerCase();
+    const kamarFilter = document.getElementById("searchKamar").value.toLowerCase();
+
+    const container = document.getElementById("cards");
+    container.innerHTML = "";
+
+    const filtered = allData.filter(r => {
+        const nama = r.c[1]?.v?.toString().toLowerCase() || "";
+        const kamar = r.c[4]?.v?.toString().toLowerCase() || "";
+        return nama.includes(namaFilter) && kamar.includes(kamarFilter);
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = "<p>Data kosong</p>";
+        return;
+    }
+
+    filtered.forEach(r => {
+        const nama = r.c[1]?.v || "";
+        const hp = r.c[2]?.v || "";
+        const kamar = r.c[4]?.v || "";
+
+        // ===== AUTO FIX FOTO GOOGLE DRIVE =====
+        let foto = r.c[5]?.v || "";
+
+        if (foto.includes("drive.google.com")) {
+            const match = foto.match(/\/d\/([^/]+)/);
+            if (match) {
+                foto = "https://drive.google.com/uc?id=" + match[1];
+            }
+        }
+
+        if (!foto) {
+            foto = "https://via.placeholder.com/150";
+        }
+
+        container.innerHTML += `
+            <div class="card">
+                <img src="${foto}" onerror="this.src='https://via.placeholder.com/150'">
+                <h3>${nama}</h3>
+                <p>No Kamar: ${kamar}</p>
+                <p>No HP: ${hp}</p>
+            </div>
+        `;
+    });
+}
+
+/* ================= EVENT ================= */
+document.getElementById("searchNama").addEventListener("input", render);
+document.getElementById("searchKamar").addEventListener("input", render);
+</script>
+
+</body>
+</html>

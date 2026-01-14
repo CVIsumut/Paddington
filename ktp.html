@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Input Data Tamu</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background:#f1f5f9;
+  padding:20px;
+}
+.container {
+  max-width:600px;
+  background:#fff;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 5px 15px rgba(0,0,0,.1);
+}
+h2 { text-align:center; }
+
+img {
+  width:100%;
+  border-radius:10px;
+  margin-top:10px;
+  display:none;
+}
+
+button {
+  margin-top:12px;
+  width:100%;
+  padding:12px;
+  font-size:16px;
+  background:#2563eb;
+  color:white;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+label {
+  font-weight:bold;
+  margin-top:10px;
+  display:block;
+}
+input {
+  width:100%;
+  padding:8px;
+  border-radius:6px;
+  border:1px solid #ccc;
+}
+
+/* LOADING */
+#loading {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.5);
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+.spinner {
+  width:60px;
+  height:60px;
+  border:6px solid #ddd;
+  border-top:6px solid #2563eb;
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* TOAST */
+#toast {
+  position:fixed;
+  bottom:30px;
+  right:30px;
+  background:#1e293b;
+  color:white;
+  padding:14px 20px;
+  border-radius:10px;
+  font-weight:bold;
+  opacity:0;
+  transform:translateY(20px);
+  transition:.3s;
+}
+#toast.show { opacity:1; transform:translateY(0); }
+#toast.success { background:#16a34a; }
+#toast.error { background:#dc2626; }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h2>📂 Input Data Tamu</h2>
+
+<label>Upload Foto Identitas</label>
+<input type="file" id="fileInput" accept="image/*">
+
+<img id="preview">
+<canvas id="canvas" style="display:none"></canvas>
+
+<hr>
+
+<label>Nama</label>
+<input id="nama">
+
+<label>No HP</label>
+<input id="hp" type="tel">
+
+<label>Deposit</label>
+<input id="deposit" type="number">
+
+<label>No Kamar</label>
+<input id="kamar">
+
+<button onclick="kirimData()">💾 Simpan Data</button>
+</div>
+
+<div id="loading"><div class="spinner"></div></div>
+<div id="toast"></div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzlvTl82FjS14CRSIikZ0QRhR8HMjTPDHQ7uqjuaBtXXL8pzXa96OkVcv0deIHIDgjm/exec";
+
+let fotoBase64 = "";
+
+const toastBox = document.getElementById("toast");
+function toast(msg,type="success"){
+  toastBox.className = "show " + type;
+  toastBox.textContent = msg;
+  setTimeout(()=>toastBox.className="",3000);
+}
+
+function showLoading(show=true){
+  loading.style.display = show ? "flex" : "none";
+}
+
+/* ===== UPLOAD FILE ===== */
+fileInput.onchange = ()=>{
+  const file = fileInput.files[0];
+  if(!file) return;
+
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = "block";
+
+  const img = new Image();
+  img.onload = ()=>{
+    canvas.width = img.width;
+    canvas.height = img.height;
+    canvas.getContext("2d").drawImage(img,0,0);
+    fotoBase64 = canvas.toDataURL("image/jpeg");
+  };
+  img.src = preview.src;
+};
+
+/* ===== RESET FORM ===== */
+function resetForm(){
+  nama.value = "";
+  hp.value = "";
+  deposit.value = "";
+  kamar.value = "";
+
+  fileInput.value = "";
+  preview.src = "";
+  preview.style.display = "none";
+  fotoBase64 = "";
+}
+
+/* ===== KIRIM DATA ===== */
+async function kirimData(){
+  if(!fotoBase64) return toast("Foto wajib diupload","error");
+
+  showLoading(true);
+  try{
+    const res = await fetch(SCRIPT_URL,{
+      method:"POST",
+      body:JSON.stringify({
+        nama: nama.value,
+        hp: hp.value,
+        deposit: deposit.value,
+        kamar: kamar.value,
+        foto: fotoBase64
+      })
+    });
+
+    if(res.ok){
+      toast("Data berhasil disimpan","success");
+      resetForm(); // 🔥 AUTO KOSONG
+    } else {
+      toast("Gagal menyimpan","error");
+    }
+  } catch {
+    toast("Koneksi error","error");
+  }
+  showLoading(false);
+}
+</script>
+
+</body>
+</html>

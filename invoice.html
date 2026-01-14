@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Invoice Booking</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f6f8;
+  padding: 30px;
+}
+
+.invoice {
+  background: white;
+  max-width: 800px;
+  margin: auto;
+  padding: 30px;
+  border: 1px solid #ddd;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 30px;
+}
+
+.header h2 {
+  margin: 0;
+}
+
+.section {
+  margin-bottom: 20px;
+}
+
+.section h3 {
+  margin-bottom: 8px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 5px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+td, th {
+  padding: 10px;
+  border: 1px solid #ddd;
+}
+
+.total {
+  text-align: right;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.print {
+  text-align: center;
+  margin-top: 30px;
+}
+
+button {
+  padding: 10px 20px;
+  border: none;
+  background: #333;
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #c9a24d;
+}
+
+@media print {
+  .print {
+    display: none;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="invoice">
+  <div class="header">
+    <div>
+      <h2>INVOICE</h2>
+      <p>Penginapan Sejahtera</p>
+      <p>Jl. Contoh No. 123</p>
+      <p>Telp: 08123456789</p>
+    </div>
+    <div>
+      <p><b>Tanggal:</b> <span id="tanggal"></span></p>
+      <p><b>Status:</b> <span id="status"></span></p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Data Tamu</h3>
+    <p><b>Nama:</b> <span id="nama"></span></p>
+    <p><b>No HP:</b> <span id="hp"></span></p>
+    <p><b>Email:</b> <span id="email"></span></p>
+  </div>
+
+  <div class="section">
+    <h3>Detail Booking</h3>
+    <table>
+      <tr>
+        <th>Kamar</th>
+        <th>Check-in</th>
+        <th>Check-out</th>
+        <th>Tamu</th>
+      </tr>
+      <tr>
+        <td id="kamar"></td>
+        <td id="checkin"></td>
+        <td id="checkout"></td>
+        <td id="tamu"></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section total">
+    Total: <span id="total">Rp -</span>
+  </div>
+
+  <div class="print">
+    <button onclick="window.print()">🖨 Cetak / Simpan PDF</button>
+  </div>
+</div>
+
+<script>
+const data = JSON.parse(localStorage.getItem("invoiceData"));
+
+document.getElementById("tanggal").innerText = new Date().toLocaleDateString();
+document.getElementById("status").innerText = data.status;
+
+document.getElementById("nama").innerText = data.nama;
+document.getElementById("hp").innerText = data.hp;
+document.getElementById("email").innerText = data.email;
+
+document.getElementById("kamar").innerText = data.kamar;
+document.getElementById("checkin").innerText = data.checkin;
+document.getElementById("checkout").innerText = data.checkout;
+document.getElementById("tamu").innerText = data.tamu;
+
+// HARGA (OPSIONAL – BISA DIUBAH)
+let harga = 0;
+if (data.kamar === "Standard Room") harga = 250000;
+if (data.kamar === "Deluxe Room") harga = 400000;
+if (data.kamar === "Family Room") harga = 600000;
+
+document.getElementById("total").innerText =
+  "Rp " + harga.toLocaleString("id-ID");
+</script>
+
+</body>
+</html>

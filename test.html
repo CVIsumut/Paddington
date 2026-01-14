@@ -1,0 +1,6 @@
+<script>
+fetch("https://docs.google.com/spreadsheets/d/1TikUIIPJv9EmadgHKzanfyeRSwI-TtKiRcPvX2vvyTE/export?format=csv")
+.then(r => r.text())
+.then(t => console.log(t))
+.catch(e => console.error(e));
+</script>

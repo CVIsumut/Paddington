@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Admin Booking</title>
+
+<style>
+:root{
+  --primary:#1e3a8a;
+  --accent:#f59e0b;
+  --bg:#f1f5f9;
+  --new:#dcfce7;
+}
+body{
+  font-family:Segoe UI,Arial,sans-serif;
+  background:var(--bg);
+  margin:0;
+  padding:20px;
+}
+.container{
+  background:#fff;
+  border-radius:16px;
+  padding:20px;
+  box-shadow:0 20px 40px rgba(0,0,0,.08);
+}
+
+/* HEADER */
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:15px;
+  flex-wrap:wrap;
+}
+h1{
+  color:var(--primary);
+  margin:0;
+  font-size:22px;
+}
+.greeting{
+  margin:6px 0;
+  font-size:14px;
+  color:#334155;
+}
+
+button{
+  border:none;
+  border-radius:8px;
+  padding:8px 12px;
+  cursor:pointer;
+  font-size:13px;
+}
+.btn-refresh{background:#0ea5e9;color:#fff}
+.btn-save{background:#2563eb;color:#fff}
+.btn-wa{background:#16a34a;color:#fff}
+.btn-inv{background:var(--accent);color:#000}
+
+/* TABLE */
+.table-wrap{
+  overflow-x:auto;
+  margin-top:15px;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:1000px;
+}
+th{
+  background:var(--primary);
+  color:#fff;
+  padding:10px;
+  font-size:13px;
+  white-space:nowrap;
+}
+td{
+  padding:8px;
+  border-bottom:1px solid #e5e7eb;
+  text-align:center;
+  font-size:13px;
+  white-space:nowrap;
+}
+tr:hover{background:#f8fafc}
+tr.new{background:var(--new);animation:flash 1.2s}
+@keyframes flash{0%{opacity:.3}100%{opacity:1}}
+
+select{
+  padding:6px;
+  border-radius:6px;
+  font-weight:600;
+}
+
+/* STATUS */
+.status-Pending{background:#fde047}
+.status-Confirmed{background:#86efac}
+.status-Cancelled{background:#fca5a5}
+
+/* TOAST */
+.toast{
+  position:fixed;
+  right:15px;
+  bottom:15px;
+  background:#16a34a;
+  color:#fff;
+  padding:14px 16px;
+  border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.2);
+  font-size:14px;
+}
+
+/* MOBILE */
+@media(max-width:768px){
+  body{padding:12px}
+  h1{font-size:20px}
+  .btn-refresh{width:100%}
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>🏨 Dashboard Admin Booking</h1>
+      <div class="greeting" id="greeting"></div>
+    </div>
+    <button class="btn-refresh" onclick="loadData()">🔄 Refresh</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Nama</th>
+          <th>HP</th>
+          <th>Kamar</th>
+          <th>Check-in</th>
+          <th>Check-out</th>
+          <th>Malam</th>
+          <th>Status</th>
+          <th>Invoice</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<audio id="sound">
+  <source src="https://actions.google.com/sounds/v1/alarms/notification_wood_block.ogg">
+</audio>
+
+<script>
+/* ================= KONFIG ================= */
+const API_URL="https://script.google.com/macros/s/AKfycbyGQU4yC6Nf2Qy4li5KaMqk3mrnV7QDpbMj5DLHbHzROC0g7sP-Z2znO2EGNtBZs3Sd9A/exec";
+const ADMIN_NAME="Admin";
+
+/* ================= UCAPAN ================= */
+(()=>{
+  const j=new Date().getHours();
+  const s=j<11?"Pagi":j<15?"Siang":j<18?"Sore":"Malam";
+  greeting.innerHTML=`Selamat ${s}, <b>${ADMIN_NAME}</b> 👋`;
+})();
+
+/* ================= UTIL ================= */
+const parseTanggal=v=>{
+  if(!v) return new Date();
+  if(v.includes("T")) return new Date(v);
+  const p=v.includes("/")?v.split("/") : v.split("-");
+  return p[0].length===4
+    ? new Date(p[0],p[1]-1,p[2])
+    : new Date(p[2],p[1]-1,p[0]);
+};
+const fmt=d=>d.toLocaleDateString("id-ID");
+const malam=(a,b)=>{
+  a.setHours(12,0,0,0); 
+  b.setHours(12,0,0,0);
+  return Math.max(1,Math.round((b-a)/86400000));
+};
+
+/* ================= NOTIF ================= */
+let lastCount=0, firstLoad=true;
+function notify(j){
+  sound.play();
+  const t=document.createElement("div");
+  t.className="toast";
+  t.innerHTML=`🔔 <b>${j}</b> booking baru masuk`;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),4000);
+}
+
+/* ================= WARNA STATUS ================= */
+function setStatusColor(sel){
+  sel.classList.remove("status-Pending","status-Confirmed","status-Cancelled");
+  sel.classList.add("status-"+sel.value);
+}
+
+/* ================= LOAD ================= */
+function loadData(){
+fetch(API_URL).then(r=>r.json()).then(r=>{
+  const data=r.data||[];
+  tbody.innerHTML="";
+
+  if(!firstLoad && data.length>lastCount){
+    notify(data.length-lastCount);
+  }
+
+  data.forEach((d,i)=>{
+    const ci=parseTanggal(d.checkin);
+    const co=parseTanggal(d.checkout);
+    const tr=document.createElement("tr");
+    if(i>=lastCount && !firstLoad) tr.classList.add("new");
+    tr.innerHTML=`
+      <td>${i+1}</td>
+      <td>${d.nama}</td>
+      <td>${d.hp}</td>
+      <td>${d.kamar}</td>
+      <td>${fmt(ci)}</td>
+      <td>${fmt(co)}</td>
+      <td>${malam(ci,co)}</td>
+      <td>
+        <select id="s${i}" onchange="setStatusColor(this)">
+          <option ${d.status=="Pending"?"selected":""}>Pending</option>
+          <option ${d.status=="Confirmed"?"selected":""}>Confirmed</option>
+          <option ${d.status=="Cancelled"?"selected":""}>Cancelled</option>
+        </select>
+      </td>
+      <td>${d.invoice||"-"}</td>
+      <td>
+        <button class="btn-save" onclick="updateStatus(${i+2})">💾</button>
+        <button class="btn-wa" onclick="wa('${d.hp}','${d.nama}','${d.kamar}','${fmt(ci)}','${fmt(co)}')">WA</button>
+        <button class="btn-inv" onclick='invoice(${JSON.stringify(d)},${i+2},${i+1})'>🧾</button>
+      </td>`;
+    tbody.appendChild(tr);
+    setStatusColor(document.getElementById("s"+i));
+  });
+
+  lastCount=data.length;
+  firstLoad=false;
+});
+}
+loadData();
+
+/* ================= AUTO REFRESH ================= */
+let timer=setInterval(loadData,30000);
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden) clearInterval(timer);
+  else{
+    loadData();
+    timer=setInterval(loadData,30000);
+  }
+});
+
+/* ================= ACTION ================= */
+function updateStatus(row){
+  const st=document.getElementById("s"+(row-2)).value;
+  fetch(`${API_URL}?action=update&row=${row}&status=${st}`)
+    .then(()=>alert("Status diperbarui"));
+}
+function wa(hp,nama,kamar,ci,co){
+  const msg=`Halo ${nama}
+Booking ${kamar}
+${ci} - ${co}
+Terima kasih`;
+  window.open(`https://wa.me/${hp.replace(/^0/,"62")}?text=${encodeURIComponent(msg)}`);
+}
+
+/* ================= INVOICE ================= */
+function invoice(d,row,urut){
+  const harga={
+    "Standard Room":250000,
+    "Deluxe Room":400000,
+    "Family Room":600000
+  };
+  const ci=parseTanggal(d.checkin);
+  const co=parseTanggal(d.checkout);
+  const m=malam(ci,co);
+  const total=harga[d.kamar]*m;
+  const no=`INV-${new Date().toISOString().slice(0,10).replace(/-/g,"")}-${String(urut).padStart(4,"0")}`;
+
+  fetch(`${API_URL}?action=invoice&row=${row}&invoice=${no}`);
+
+  const w=window.open("");
+  w.document.write(`
+  <html><body style="font-family:Segoe UI;padding:40px">
+  <h2>INVOICE BOOKING</h2>
+  <p>No: ${no}</p>
+  <p>Nama: ${d.nama}</p>
+  <table border="1" width="100%" cellpadding="8">
+  <tr><th>Kamar</th><th>Check-in</th><th>Check-out</th><th>Malam</th><th>Total</th></tr>
+  <tr>
+    <td>${d.kamar}</td>
+    <td>${fmt(ci)}</td>
+    <td>${fmt(co)}</td>
+    <td>${m}</td>
+    <td>Rp ${total.toLocaleString("id-ID")}</td>
+  </tr>
+  </table>
+  <br>
+  <button onclick="window.print()">🖨 Cetak / PDF</button>
+  </body></html>`);
+  w.document.close();
+}
+</script>
+
+</body>
+</html>
